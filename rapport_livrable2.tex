@@ -1,0 +1,139 @@
+\documentclass[11pt]{article}
+\renewcommand{\baselinestretch}{1.05}
+
+\usepackage{amsmath,amsthm,verbatim,amssymb,amsfonts,amscd, graphicx}
+\usepackage{graphics}
+
+\usepackage{listings}
+
+\usepackage[hidelinks]{hyperref}
+
+\renewcommand{\contentsname}{Table des mati\`eres}
+
+\topmargin0.0cm
+\headheight0.0cm
+\headsep0.0cm
+\oddsidemargin0.0cm
+\textheight23.0cm
+\textwidth16.5cm
+\footskip1.0cm
+
+\usepackage{listings}
+\usepackage{color}
+
+\definecolor{mygreen}{rgb}{0,0.6,0}
+\definecolor{mygray}{rgb}{0.5,0.5,0.5}
+\definecolor{mymauve}{rgb}{0.58,0,0.82}
+
+\lstset{ %
+  backgroundcolor=\color{white},   % choose the background color; you must add \usepackage{color} or \usepackage{xcolor}
+  basicstyle=\footnotesize,        % the size of the fonts that are used for the code
+  breakatwhitespace=false,         % sets if automatic breaks should only happen at whitespace
+  breaklines=true,                 % sets automatic line breaking
+  captionpos=b,                    % sets the caption-position to bottom
+  commentstyle=\color{mygreen},    % comment style
+  deletekeywords={...},            % if you want to delete keywords from the given language
+  escapeinside={\%*}{*)},          % if you want to add LaTeX within your code
+  extendedchars=true,              % lets you use non-ASCII characters; for 8-bits encodings only, does not work with UTF-8
+  frame=single,	                   % adds a frame around the code
+  keepspaces=true,                 % keeps spaces in text, useful for keeping indentation of code (possibly needs columns=flexible)
+  keywordstyle=\color{blue},       % keyword style
+  language=Octave,                 % the language of the code
+  otherkeywords={*,...},           % if you want to add more keywords to the set
+  numbers=left,                    % where to put the line-numbers; possible values are (none, left, right)
+  numbersep=5pt,                   % how far the line-numbers are from the code
+  numberstyle=\tiny\color{mygray}, % the style that is used for the line-numbers
+  rulecolor=\color{black},         % if not set, the frame-color may be changed on line-breaks within not-black text (e.g. comments (green here))
+  showspaces=false,                % show spaces everywhere adding particular underscores; it overrides 'showstringspaces'
+  showstringspaces=false,          % underline spaces within strings only
+  showtabs=false,                  % show tabs within strings adding particular underscores
+  stepnumber=2,                    % the step between two line-numbers. If it's 1, each line will be numbered
+  stringstyle=\color{mymauve},     % string literal style
+  tabsize=2,	                   % sets default tabsize to 2 spaces
+  title=\lstname                   % show the filename of files included with \lstinputlisting; also try caption instead of title
+}
+
+\begin{document}
+ 
+
+
+\title{Programmation fonctionnelle et interpr\'eteur Scheme}
+\author{Lucien Dos Santos \\ Mohamed Hage Hassan}
+\maketitle
+
+\tableofcontents
+\clearpage
+
+\section{Introduction}
+ 
+Ce rapport porte sur les travaux effectu\'es pour la mise en place de la deuxi\`eme partie de l'interpr\'eteur scheme. Cette partie consiste \`a programmer l'ensemble des fonctions qui vont remplacer la repr\'esentation tout simple par une \'evaluation, ainsi que des diff\'erents environnements (locaux et global) qui les diff\'erents variables, et surtout les formes essentielles du language comme \textit{quote, define, set! et if}.\newline\newline
+On rappelle de nouveau que le code qu'on programme \textbf{ne d\'epend pas} de l'embryon du code fourni dans la partie 1. Notre d\'emarche de travail va \^etre de cons\'equence bien diff\'erente de celle qui est recommend\'ee.\newline\newline
+Il faut aussi noter que le code est programm\'e d'une fa\c con incr\'ementale, par effet, le code fourni dans le livrable 2 va \^etre rattach\'e \`a celui de la premi\`ere partie. Par contre, on a impl\'ement\'e des arguments pour l'interpreteur de fa\c con qu'il soit possible de commuter entre le code de la partie 1 et les additions qui sont ajout\'ees de suite.
+
+\section{Impl\'ementation du mode d'\'evaluation}
+On va parler tout d'abord du process pour le remplacement de la repr\'esentation par une partie d'\'evalutation des fonction.\newline Comme on l'a indiqu\'e pr\'ecedement, le code est tr\`es modulaire et r\'eparti en \textbf{parseurs}, chaqu'un sert pour une fonction donn\'ee (parseur de cha\^ine de charact\`eres, des entiers, des charat\`eres...), qui sont ainsi group\'es dans des fichiers s\'epar\'es. En premier temps, le code \'etait d\'ependant de la fonction \texttt{represent()} (pr\'esente dans tous les parseurs). \newline\newline Les fonctions \texttt{evaluate()} et \texttt{evaluate\_on()} \'etaient d\'ej\`a existantes dans le code de la partie 1, mais non impl\'ement\'ees. Prenons par exemple le parseur \textbf{MgIdentifier.c}
+
+\begin{lstlisting}[language=C]
+static MgStatus* not_implemented_too_late(void) {
+  return Mg_error_not_implemented;
+}
+\end{lstlisting}
+Le travail de cette partie \'etait r\'eparti pour la mise en place correcte de ces 2 fonctions \textbf{pour tout les parseurs}, reprenons l'exemple du parseur de symbols (\textbf{MgIdentifier}) :
+
+\begin{lstlisting}[language=C]
+static MgStatus* evaluate(MgIdentifier* self, MgObject** output, MgInterpreter* interpreter, MgEnv* env){
+	// Code
+}
+
+static MgStatus* evaluate_on(MgIdentifier* self, MgIdentifier** output){
+	// Code 
+}
+\end{lstlisting}
+
+\noindent Les structures de donn\'ees associ\'ees sont aussi modifi\'ees (\textit{MgObjectType type = \{\}}).
+\newline\newline 
+\section{Environnements}
+La m\'ethodologie utilis\'ee globalement dans la production du code est d'impl\'ementer toutes les fonctionnalit\'es possibles d'une mani\`ere modulaire (et en fichier s\'epar\'e) . Cela sert principalement \`a prendre en compte facilement des futures impl\'ementation ou expantion de nouvel code.\newline
+Prenons par exemple le cas de l'impl\'ementation des environnements : celle-ci se pr\'esente par le fichier \texttt{MgEnvironment.c} pr\'esent dans le r\'epertoire \texttt{src/core/}. Cette proc\'edure cr\'ee les fonctions \texttt{MgEnv\_create(), MgEnv\_destroy(), MgEnv\_add\_identifier()..)} qui ne sont autre que des wrappeurs pour \textbf{les manipulations de listes}.\newline\newline
+La technique de programmation consiste \`a programmer le m\^eme fichier (ou m\^eme fonctionnalit\'e) simultan\'ement, de fa\c con que si un des bin\^ome bloque sur un probl\`eme, on peut voir tous les deux les moyens pour le r\'esoudre (ou pour la proposition d'id\'ees).\newline
+L'id\'ee des environements nest\'es ce fait principalement avec la fonction \texttt{MgEnv\_create()} :
+
+\begin{lstlisting}[language=C]
+MgStatus* MgEnv_create(MgEnv** env, MgEnv* parent_env) 
+\end{lstlisting}
+On rappelle que le type de structure MgEnv n'est que \textbf{MgList} (manipulation de listes). Les autres fonctions de l'environnement peuvent acc\'eder \`a cette fonctionnalit\'e de nesting des environnements avec \texttt{MgEnv** env} et \texttt{int scope\_limited}. Le fichier \texttt{.h} est associ\'e pour les d\'efinitions de prototypes.\newline
+La manipulation directe des environnements se fait notamment dans le parseur \textbf{MgIdentifier}, surtout la fonction \texttt{evaluate()} qui fait appelle vers des fonctions de manipulation d'environnement.\newline\newline
+Pour une prise en compte correcte de l'addition des environnements, on a modifi\'e les fichiers \texttt{MgObject.c, MgIdentifier.c, MgList.c, MgString.c, Mgpair.c}.\newline\newline
+Il faut aussi not\'e que pour am\'eliorer le code de fa\c con g\'en\'erale, on a ajout\'e le module \textbf{MgInterpreter.c}, ce qui nettoie la fonctionnalit\'e de \textbf{Interactive.c} (On d\'eplace la plupart des fonctions inclus dans ce fichier dans \textbf{MgInterpreter.c} en r\'ecrivant quelque fonctions).
+
+\section{Les formes}
+Apr\`es une impl\'ementation correcte des environnements, on proc\`ede \`a l'introduction des fonctions Built-in (\textit{define, set!..}). Ces proc\'edures sont cr\'ees dans un r\'epertoire s\'epar\'e \texttt{src/buildin/}.\newline\newline
+Par rapport aux manipulation des proc\'edures (les fonctions \texttt{evaluate(), evaluate\_on(), represent(), destroy()}) ainsi que les fonctions qui g\`erent la m\'emoire (\texttt{MgBuildInProcedure\_create(),\\ MgBuildInProcedure\_destroy())}, sont d\'efinies dans le fichier \textbf{MgBuildinProcedure.c} et son fichier \texttt{.h} associ\'e dans \texttt{src/core}.\newline\newline
+\subsection{Formes auto-g\'en\'eres}
+Revenons maintenant vers les formes (dans \texttt{src/buildin}), ce r\'epertoire contient :
+\begin{itemize}
+\item[-] \texttt{buildin\_procedure\_macro.h} : Des MACROs qui vont faciliter la cr\'eation des structures de donn\'ees de type \texttt{Mg\_buildin\_procedure} (d\'ecrit les formes demand\'ees dan la partie 2 de l'interpr\'eteur Scheme). Cette norme de programmation est pratiqu\'ee par Lucien g\'en\'eralement.
+\item[-] \texttt{buildin\_procedures.h} : Apr\`es la d\'efinition des macros, on commence \`a d\'efinir ces formes comme suit (pareil pour les autres formes) :
+
+	\texttt{\textcolor{blue}{MG\_BUILDIN\_PROCEDURE}(define, ``define'');}
+\item[-] \texttt{buildin\_procedures.c} : D\'efini la liste (\texttt{Mg\_buildin\_procedure\_array[]}) des diff\'erents formes \`a utiliser.
+\item[-] Chaqu'une des formes (\textit{if, set!, print, define, quote}) est alors dans un fichier s\'eparer.
+\item[-] Lors de la compilation, des instructions pr\'esentes dans le fichier \texttt{Makefile} permet de voir que le compilateur remplace les nons des proc\'edures automatiquement.
+
+\end{itemize}
+
+\section{Notes}
+En r\'esum\'e, on peut mettre l'accent sur certains points :
+
+\begin{itemize}
+\item[-] Apr\`es plusieurs essais sur Valgrind, on trouve qu'il n'ya pas de possibilit\'e de Leak : Le programme a r\'eussi \`a nettoyer la m\'emoire (par exemple quand on n'a plus besoin des objects, ils sont tous nettoy\'es).
+\item[-] L'\'executable a des flags de compatibilit\'e, afin de seulement parser sans \'evaluer comme pour le code de la partie 1.
+\item[-] Les environnements fonctionnent, m\^eme en mode du ``nesting''.
+\item[-] Toutes les formes impl\'ement\'es fonctionnent parfaitement.
+\item[-] Le programme est tr\`es modulaire, on peut ajouter plein de parseurs en plus.
+\item[-] Il reste la partie du ``Tail Call Optimisation'', qu'on pas trouver de moyens pour l'impl\'ementer.
+\item[-] Il en reste qu'en m\^eme des tests \`a faire.
+
+\end{itemize}
+
+\end{document}
